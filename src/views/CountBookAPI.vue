@@ -1,0 +1,79 @@
+<template>
+  <div v-if="apiResponse" class="api-response">
+    <pre>{{ JSON.stringify(apiResponse, null, 2) }}</pre>
+  </div>
+  <div v-else>
+    <p>Loading or error...</p>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const authors = ref([])
+const loading = ref(false)
+const error = ref(null)
+const apiResponse = ref(null)
+const authorsCount = ref(0)
+const totalBooks = ref(0)
+
+const calculateStats = () => {
+  authorsCount.value = authors.value.length
+  totalBooks.value = authors.value.reduce((total, author) => {
+    return total + (author.famousWorks ? author.famousWorks.length : 0)
+  }, 0)
+}
+
+const getApiData = async () => {
+  loading.value = true
+  error.value = null
+  try {
+    const response = await fetch('src/assets/json/authors.json')
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+    const data = await response.json()
+    authors.value = data
+    calculateStats()
+  } catch (err) {
+    error.value = `Error loading authors data: ${err.message}`
+    console.error('Error loading authors data:', err)
+  } finally {
+    loading.value = false
+  }
+  apiResponse.value = {
+    success: !error.value,
+    data: {
+      authorsCount: authorsCount.value,
+      totalBooks: totalBooks.value,
+      authors: authors.value.map(author => ({
+        name: author.name,
+        bookCount: author.famousWorks ? author.famousWorks.length : 0
+      }))
+    },
+    timestamp: new Date().toISOString()
+  }
+}
+
+onMounted(() => {
+  getApiData()
+})
+
+defineExpose({ getApiData })
+</script>
+
+<style scoped>
+.api-response {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+  background: #f8fdfc;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  font-size: 1.1rem;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+</style>
