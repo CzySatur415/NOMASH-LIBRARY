@@ -13,7 +13,7 @@
           Search Weather
         </button>
         <br><br>
-        <span>Enter city name and click 'Search Weather' to get real-time weather info.</span>
+        <span>Enter city name and click 'Search Weather' to get real-time weather info. If location permission is denied, please search by city.</span>
       </div>
     </div>
     <main>
@@ -27,6 +27,7 @@
         </div>
         <span>{{ weatherData.weather[0].description }}</span>
       </div>
+      <div v-else class="empty-state">No data yet. Try searching a city.</div>
     </main>
   </div>
 </template>
@@ -46,7 +47,7 @@ export default {
   computed: {
     temperature() {
       return this.weatherData
-        ? Math.floor(this.weatherData.main.temp - 273)
+        ? Math.round(this.weatherData.main.temp)
         : null;
     },
     iconUrl() {
@@ -58,7 +59,7 @@ export default {
   methods: {
     async searchByCity() {
       if (!this.city) return;
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${this.city}&appid=${apikey}`;
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(this.city)}&appid=${apikey}&units=metric`;
       await this.fetchWeatherData(url);
     },
     async fetchWeatherData(url) {
@@ -72,13 +73,18 @@ export default {
       }
     },
     async fetchCurrentLocationWeather() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async (position) => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
           const { latitude, longitude } = position.coords;
-          const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apikey}`;
+          const url = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apikey}&units=metric`;
           await this.fetchWeatherData(url);
-        });
-      }
+        },
+        (err) => {
+          console.warn("Geolocation not available or permission denied:", err?.message || err);
+        },
+        { timeout: 8000 }
+      );
     },
   },
   mounted() {
@@ -143,4 +149,5 @@ img {
   width: 60px;
   height: 60px;
 }
+.empty-state { text-align: center; color: #777; margin-top: 16px; }
 </style>
